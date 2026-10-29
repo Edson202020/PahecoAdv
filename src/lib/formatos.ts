@@ -74,3 +74,10 @@ export const diaDoCompromisso = (c: { tipo: string; inicio: Date }) =>
   c.tipo === "PRAZO" ? c.inicio.toISOString().slice(0, 10) : diaSP.format(c.inicio);
 
 export const hojeSP = () => diaSP.format(new Date());
+
+export function mascararCpfCnpj(valor: string | null | undefined): string {
+  const d = somenteDigitos(valor ?? "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return valor ?? "";
+}

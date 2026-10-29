@@ -45,8 +45,9 @@ export async function alterarPerfil(id: string, dados: FormData) {
   const perfil = dados.get("perfil") as Perfil;
   if (!Object.values(Perfil).includes(perfil)) throw new Error("Perfil inválido.");
   if (id === admin.id && perfil !== "SOCIO") throw new Error("Você não pode retirar o próprio perfil de sócio.");
-  await db.usuario.update({ where: { id }, data: { perfil } });
-  await registrar(admin.id, "alterar_perfil", "Usuario", id, { perfil });
+  const oab = String(dados.get("oab") ?? "").trim() || null;
+  await db.usuario.update({ where: { id }, data: { perfil, oab } });
+  await registrar(admin.id, "alterar_perfil", "Usuario", id, { perfil, oab });
   revalidatePath("/usuarios");
 }
 

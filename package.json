@@ -12,13 +12,15 @@
     "db:migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "importar:astrea": "tsx scripts/importar-astrea.ts",
-    "sincronizar:datajud": "tsx scripts/sincronizar-datajud.ts"
+    "sincronizar:datajud": "tsx scripts/sincronizar-datajud.ts",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "csv-parse": "^7.0.3",
     "date-fns": "^4.4.0",
+    "jszip": "^3.10.2",
     "next": "15.5.28",
     "next-auth": "^4.24.15",
     "react": "19.1.0",

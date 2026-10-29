@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { sincronizarTodos } from "@/lib/datajud";
 import { vincularPorNumero } from "@/lib/publicacoes";
 
-// Chamado pelo agendador da hospedagem (ex.: 3 vezes ao dia) com o cabeçalho
-// Authorization: Bearer <CRON_SECRET>.
+// Chamado pelo Cron da Vercel (vercel.json), que envia GET com o cabeçalho
+// Authorization: Bearer <CRON_SECRET>. POST fica disponível para chamadas manuais.
 export const maxDuration = 800;
 
-export async function POST(request: Request) {
+async function executar(request: Request) {
   const segredo = process.env.CRON_SECRET;
   if (!segredo || request.headers.get("authorization") !== `Bearer ${segredo}`) {
     return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
@@ -17,3 +17,5 @@ export async function POST(request: Request) {
   const publicacoesVinculadas = await vincularPorNumero();
   return NextResponse.json({ ...resultado, publicacoesVinculadas });
 }
+
+export { executar as GET, executar as POST };

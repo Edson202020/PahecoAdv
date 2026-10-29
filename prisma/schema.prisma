@@ -7,7 +7,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL usa o pooler (porta 6543); DIRECT_URL, a conexão direta para as migrações.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Perfil {
@@ -419,4 +421,13 @@ model RegistroAuditoria {
   criadoEm  DateTime @default(now())
 
   @@index([entidade, entidadeId])
+}
+
+model ModeloDocumento {
+  id           String   @id @default(cuid())
+  nome         String   @unique
+  categoria    String?
+  conteudo     String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

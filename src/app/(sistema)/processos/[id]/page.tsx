@@ -59,6 +59,7 @@ export default async function DetalheProcesso({ params }: { params: Promise<{ id
           {processo.tipoAcao && <p>Tipo de ação: {processo.tipoAcao}</p>}
           {processo.pasta && <p>Pasta: {processo.pasta}</p>}
           {processo.dataEncerramento && <p>Encerramento: {formatarData(processo.dataEncerramento)}</p>}
+          <p className="pt-1"><Link href={`/documentos?processo=${processo.id}`} className="link">Gerar documento</Link></p>
           {processo.url && <p><a href={processo.url} target="_blank" rel="noreferrer" className="link">Abrir no site do tribunal</a></p>}
           {processo.observacoes && <p className="whitespace-pre-line pt-2 text-slate-600">{processo.observacoes}</p>}
         </section>

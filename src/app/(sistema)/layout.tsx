@@ -10,6 +10,7 @@ export default async function LayoutSistema({ children }: { children: React.Reac
     { href: "/publicacoes", rotulo: "Publicações" },
     { href: "/processos", rotulo: "Processos" },
     { href: "/clientes", rotulo: "Clientes" },
+    { href: "/documentos", rotulo: "Documentos" },
     ...(pode(usuario.perfil, "financeiro:ver") ? [{ href: "/financeiro", rotulo: "Financeiro" }] : []),
     ...(pode(usuario.perfil, "usuarios:gerenciar")
       ? [

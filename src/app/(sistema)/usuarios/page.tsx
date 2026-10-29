@@ -14,21 +14,22 @@ export default async function PaginaUsuarios() {
       <h1 className="text-2xl font-semibold">Usuários</h1>
       <div className="cartao overflow-x-auto p-0">
         <table className="tabela">
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Situação</th><th>Senha</th></tr></thead>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil e OAB</th><th>Situação</th><th>Senha</th></tr></thead>
           <tbody>
             {usuarios.map((u) => (
               <tr key={u.id}>
-                <td>{u.nome}{u.oab && <span className="block text-xs text-slate-500">OAB {u.oab}</span>}</td>
+                <td>{u.nome}</td>
                 <td>{u.email}</td>
                 <td>
-                  {u.id === admin.id ? NOMES_PERFIL[u.perfil] : (
-                    <form action={alterarPerfil.bind(null, u.id)} className="flex gap-1">
-                      <select name="perfil" defaultValue={u.perfil} className="campo w-auto py-1">
-                        {Object.entries(NOMES_PERFIL).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
-                      </select>
+                  <form action={alterarPerfil.bind(null, u.id)} className="flex flex-wrap gap-1">
+                      {u.id === admin.id ? <input type="hidden" name="perfil" value={u.perfil} /> : (
+                        <select name="perfil" defaultValue={u.perfil} className="campo w-auto py-1">
+                          {Object.entries(NOMES_PERFIL).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                        </select>
+                      )}
+                      <input name="oab" defaultValue={u.oab ?? ""} placeholder="OAB (SP 000.000)" className="campo w-32 py-1" />
                       <button className="botao-secundario px-2 py-1 text-xs">Salvar</button>
-                    </form>
-                  )}
+                  </form>
                 </td>
                 <td>
                   {u.id === admin.id ? "Ativo" : (

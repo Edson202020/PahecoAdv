@@ -53,6 +53,7 @@ export default async function DetalheCliente({ params }: { params: Promise<{ id:
       <div>
         <Link href="/clientes" className="link text-sm">Clientes</Link>
         <h1 className="text-2xl font-semibold">{cliente.nome}</h1>
+        <Link href={`/documentos?cliente=${cliente.id}`} className="link text-sm">Gerar documento</Link>
         {!cliente.ehCliente && <p className="text-sm text-slate-500">Contato (parte contrária, testemunha ou outro envolvido)</p>}
       </div>
       <section className="cartao space-y-2">
