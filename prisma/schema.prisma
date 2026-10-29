@@ -1,0 +1,434 @@
+// Modelo de dados do sistema de gestão do escritório.
+// Todos os módulos da especificação já têm tabela; as telas chegam por etapas.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL usa o pooler (porta 6543); DIRECT_URL, a conexão direta para as migrações.
+  directUrl = env("DIRECT_URL")
+}
+
+enum Perfil {
+  SOCIO
+  ADVOGADO
+  ESTAGIARIO
+  SECRETARIA
+}
+
+enum TipoPessoa {
+  FISICA
+  JURIDICA
+}
+
+enum AreaDireito {
+  TRABALHISTA
+  CIVEL
+  FAMILIA_SUCESSOES
+  SOCIETARIO
+  IMOBILIARIO
+  TRIBUTARIO
+  PREVIDENCIARIO
+  CRIMINAL
+  OUTRA
+}
+
+enum StatusProcesso {
+  ATIVO
+  SUSPENSO
+  ARQUIVADO
+  ENCERRADO
+}
+
+enum TipoCompromisso {
+  PRAZO
+  AUDIENCIA
+  REUNIAO
+  TAREFA
+}
+
+enum StatusCompromisso {
+  PENDENTE
+  CONCLUIDO
+  CANCELADO
+}
+
+enum ContagemPrazo {
+  DIAS_UTEIS
+  DIAS_CORRIDOS
+}
+
+enum OrigemPublicacao {
+  AASP
+  DJEN
+  DATAJUD
+  MANUAL
+  IMPORTACAO
+}
+
+enum TipoCaso {
+  PROCESSO
+  CASO
+  ATENDIMENTO
+  INCIDENTE
+  RECURSO
+}
+
+enum TipoLancamento {
+  RECEITA
+  DESPESA
+}
+
+enum StatusLancamento {
+  ABERTO
+  PAGO
+  CANCELADO
+}
+
+enum TipoHonorario {
+  VALOR
+  PERCENTUAL
+}
+
+enum StatusHonorario {
+  LANCADO
+  FATURADO
+  PARCIAL
+  RECEBIDO
+}
+
+enum StatusFatura {
+  ABERTA
+  PAGA
+  CANCELADA
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  perfil       Perfil
+  oab          String?
+  ativo        Boolean  @default(true)
+  codigoAstrea String?  @unique
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  processos     Processo[]     @relation("Responsavel")
+  compromissos  Compromisso[]  @relation("ResponsavelCompromisso")
+  publicacoes   Publicacao[]   @relation("ResponsavelPublicacao")
+  atendimentos  Atendimento[]
+  auditoria     RegistroAuditoria[]
+}
+
+// Clientes e demais contatos (partes contrárias, testemunhas...): ehCliente distingue.
+model Cliente {
+  id           String     @id @default(cuid())
+  tipo         TipoPessoa
+  ehCliente    Boolean    @default(true)
+  nome         String
+  apelido      String?
+  cpfCnpj      String?    @unique
+  rg           String?
+  email        String?
+  telefone     String?
+  endereco     String?
+  cidade       String?
+  uf           String?
+  cep          String?
+  dataNascimento DateTime? @db.Date
+  estadoCivil  String?
+  nacionalidade String?
+  profissao    String?
+  nomeMae      String?
+  nomePai      String?
+  dadosExtras  Json?      // CTPS, PIS, CNH, título de eleitor etc.
+  observacoes  String?
+  codigoAstrea String?    @unique
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+
+  processos    ProcessoCliente[]
+  atendimentos Atendimento[]
+  lancamentos  Lancamento[]
+  faturas      Fatura[]
+  documentos   Documento[]
+
+  @@index([nome])
+}
+
+model Processo {
+  id             String         @id @default(cuid())
+  numeroCnj      String?        @unique
+  numeroAlternativo String?     // números fora do padrão CNJ (administrativos, antigos)
+  titulo         String
+  tipo           TipoCaso       @default(PROCESSO)
+  area           AreaDireito
+  status         StatusProcesso @default(ATIVO)
+  tribunal       String?
+  vara           String?
+  comarca        String?
+  parteContraria String?
+  valorCausa     Decimal?       @db.Decimal(14, 2)
+  dataDistribuicao DateTime?
+  consultivo     Boolean        @default(false)
+  instancia      Int?
+  tipoAcao       String?
+  pasta          String?
+  url            String?
+  dataEncerramento DateTime?
+  observacoes    String?
+  codigoAstrea   String?        @unique
+  responsavelId  String
+  responsavel    Usuario        @relation("Responsavel", fields: [responsavelId], references: [id])
+  criadoEm       DateTime       @default(now())
+  sincronizadoEm DateTime?
+  atualizadoEm   DateTime       @updatedAt
+
+  clientes     ProcessoCliente[]
+  andamentos   Andamento[]
+  compromissos Compromisso[]
+  publicacoes  Publicacao[]
+  honorarios   Honorario[]
+  lancamentos  Lancamento[]
+  documentos   Documento[]
+
+  @@index([responsavelId])
+}
+
+model ProcessoCliente {
+  processoId String
+  clienteId  String
+  polo       String? // autor, réu, reclamante, reclamada, interessado
+  ehCliente  Boolean  @default(true)
+  principal  Boolean  @default(false)
+  processo   Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  cliente    Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@id([processoId, clienteId])
+}
+
+model Andamento {
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  data       DateTime
+  descricao  String
+  origem     OrigemPublicacao @default(MANUAL)
+  tipo       String?
+  codigoExterno String? // código do movimento no DataJud ou no Astrea, para evitar duplicidade
+  criadoEm   DateTime @default(now())
+
+  @@unique([processoId, origem, codigoExterno, data])
+  @@index([processoId, data])
+}
+
+model Compromisso {
+  id            String            @id @default(cuid())
+  tipo          TipoCompromisso
+  titulo        String
+  descricao     String?
+  inicio        DateTime
+  fim           DateTime?
+  // Prazos: guardamos a base do cálculo para o advogado conferir.
+  dataPublicacao DateTime?
+  diasPrazo     Int?
+  contagem      ContagemPrazo?
+  confirmado    Boolean           @default(false)
+  status        StatusCompromisso @default(PENDENTE)
+  local         String?
+  prioridade    String?
+  concluidoEm   DateTime?
+  codigoAstrea  String?           @unique
+  processoId    String?
+  processo      Processo?         @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  responsavelId String
+  responsavel   Usuario           @relation("ResponsavelCompromisso", fields: [responsavelId], references: [id])
+  publicacaoId  String?           @unique
+  publicacao    Publicacao?       @relation(fields: [publicacaoId], references: [id], onDelete: SetNull)
+  criadoEm      DateTime          @default(now())
+  atualizadoEm  DateTime          @updatedAt
+
+  @@index([responsavelId, inicio])
+}
+
+model Feriado {
+  id        String   @id @default(cuid())
+  data      DateTime @db.Date
+  descricao String
+  // null = vale para todos; senão sigla do tribunal (TJSP, TRT2...)
+  tribunal  String?
+
+  @@unique([data, tribunal])
+}
+
+model Publicacao {
+  id               String           @id @default(cuid())
+  origem           OrigemPublicacao
+  idExterno        String?
+  dataDisponibilizacao DateTime
+  dataPublicacao   DateTime?
+  diario           String?
+  orgao            String?
+  vara             String?
+  numeroProcesso   String?
+  texto            String
+  tratada          Boolean          @default(false)
+  descartada       Boolean          @default(false)
+  processoId       String?
+  processo         Processo?        @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  responsavelId    String?
+  responsavel      Usuario?         @relation("ResponsavelPublicacao", fields: [responsavelId], references: [id])
+  compromisso      Compromisso?
+  criadoEm         DateTime         @default(now())
+
+  @@unique([origem, idExterno])
+  @@index([tratada, dataDisponibilizacao])
+}
+
+model Atendimento {
+  id          String   @id @default(cuid())
+  clienteId   String?
+  cliente     Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  nomeContato String?
+  data        DateTime
+  assunto     String
+  relato      String?
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  criadoEm    DateTime @default(now())
+}
+
+model ContaBancaria {
+  id           String   @id @default(cuid())
+  nome         String
+  tipo         String?
+  agencia      String?
+  conta        String?
+  saldoInicial Decimal  @default(0) @db.Decimal(14, 2)
+  inicio       DateTime @db.Date
+  ativa        Boolean  @default(true)
+  codigoAstrea String?  @unique
+
+  lancamentos Lancamento[]
+  faturas     Fatura[]
+}
+
+model CategoriaFinanceira {
+  id           String  @id @default(cuid())
+  nome         String
+  paiId        String?
+  pai          CategoriaFinanceira?  @relation("Subcategorias", fields: [paiId], references: [id], onDelete: SetNull)
+  filhas       CategoriaFinanceira[] @relation("Subcategorias")
+  ativa        Boolean @default(true)
+  codigoAstrea String? @unique
+
+  lancamentos Lancamento[]
+}
+
+// Movimento de caixa (a receber, a pagar, recebido, pago).
+model Lancamento {
+  id          String           @id @default(cuid())
+  tipo        TipoLancamento
+  subtipo     String?          // Honorário, Despesa, Avulsa, Valor inicial
+  descricao   String
+  valor       Decimal          @db.Decimal(14, 2)
+  vencimento  DateTime         @db.Date
+  pagamento   DateTime?        @db.Date
+  status      StatusLancamento @default(ABERTO)
+  reembolsavel Boolean         @default(false)
+  statusReembolso String?      // despesa do cliente: lançada, faturada, recebida
+  centroCusto String?
+  contaId     String?
+  conta       ContaBancaria?   @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  categoriaId String?
+  categoria   CategoriaFinanceira? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  clienteId   String?
+  cliente     Cliente?         @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  processoId  String?
+  processo    Processo?        @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  faturaId    String?
+  fatura      Fatura?          @relation(fields: [faturaId], references: [id], onDelete: SetNull)
+  codigoAstrea String?         @unique
+  criadoEm    DateTime         @default(now())
+
+  honorarios Honorario[]
+
+  @@index([status, vencimento])
+}
+
+// Honorário contratado (parcela fixa ou percentual), ligado ao processo e ao lançamento que o recebe.
+model Honorario {
+  id           String          @id @default(cuid())
+  descricao    String
+  tipo         TipoHonorario
+  valor        Decimal?        @db.Decimal(14, 2)
+  percentual   Decimal?        @db.Decimal(5, 2)
+  vencimento   DateTime?       @db.Date
+  status       StatusHonorario @default(LANCADO)
+  processoId   String?
+  processo     Processo?       @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  lancamentoId String?
+  lancamento   Lancamento?     @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+  codigoAstrea String?         @unique
+  criadoEm     DateTime        @default(now())
+}
+
+model Fatura {
+  id           String       @id @default(cuid())
+  numero       String
+  clienteId    String?
+  cliente      Cliente?     @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  status       StatusFatura @default(ABERTA)
+  emissao      DateTime     @db.Date
+  vencimento   DateTime     @db.Date
+  pagamento    DateTime?    @db.Date
+  valor        Decimal      @db.Decimal(14, 2)
+  valorDespesas Decimal     @default(0) @db.Decimal(14, 2)
+  contaId      String?
+  conta        ContaBancaria? @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  observacoes  String?
+  codigoAstrea String?      @unique
+  criadoEm     DateTime     @default(now())
+
+  lancamentos Lancamento[]
+}
+
+model Documento {
+  id         String    @id @default(cuid())
+  nome       String
+  caminho    String
+  mimeType   String
+  tamanho    Int
+  clienteId  String?
+  cliente    Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  processoId String?
+  processo   Processo? @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  criadoEm   DateTime  @default(now())
+}
+
+model RegistroAuditoria {
+  id        String   @id @default(cuid())
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  acao      String   // criar, editar, excluir, login
+  entidade  String
+  entidadeId String?
+  detalhes  Json?
+  criadoEm  DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+}
+
+model ModeloDocumento {
+  id           String   @id @default(cuid())
+  nome         String   @unique
+  categoria    String?
+  conteudo     String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
