@@ -15,7 +15,10 @@ A especificação completa está no documento "Especificação do Sistema de Ges
 - Cadastro de usuários e de feriados (somente sócio)
 - Instalável no celular (manifesto web)
 
-O banco já tem as tabelas de publicações, atendimentos, financeiro e documentos; as telas chegam nas próximas etapas.
+- Publicações (caixa de entrada) e andamentos automáticos pelo DataJud
+- Financeiro: resumo, saldo por conta, lançamentos a receber e a pagar, faturas e honorários por processo
+
+Atendimentos e documentos têm tabelas no banco; as telas chegam na próxima etapa.
 
 ## Tecnologia
 
@@ -53,9 +56,9 @@ npm run importar:astrea -- /caminho/da/pasta
 ```
 
 Importa usuários, contatos (clientes e demais partes), processos e casos, prazos, audiências, eventos,
-tarefas, publicações e históricos. Pode ser executado de novo sem duplicar nada.
+tarefas, publicações, históricos e financeiro. Pode ser executado de novo sem duplicar nada.
 Usuários importados recebem senha aleatória: o sócio define a senha de cada um na tela Usuários.
-Financeiro, documentos e timesheets serão importados na etapa 4.
+Também importa o financeiro (contas, categorias, faturas, lançamentos e honorários). Documentos e timesheets ainda não.
 
 ## Testes
 
