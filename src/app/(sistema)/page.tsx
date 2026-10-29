@@ -7,28 +7,30 @@ import { ListaCompromissos } from "@/components/ListaCompromissos";
 
 export default async function Painel() {
   const usuario = await usuarioAtual();
-  const [{ atrasados, deHoje, proximos }, processosAtivos, aConfirmar] = await Promise.all([
+  const [{ atrasados, deHoje, proximos }, processosAtivos, aConfirmar, publicacoes] = await Promise.all([
     agendaPendente({ responsavelId: usuario.id, dias: 7 }),
     db.processo.count({ where: { status: "ATIVO", responsavelId: usuario.id } }),
     db.compromisso.count({ where: { status: "PENDENTE", tipo: "PRAZO", confirmado: false, responsavelId: usuario.id } }),
+    db.publicacao.count({ where: { tratada: false, OR: [{ responsavelId: usuario.id }, { responsavelId: null }] } }),
   ]);
   const podeConfirmar = pode(usuario.perfil, "prazos:confirmar");
   const numeros = [
     { rotulo: "Atrasados", valor: atrasados.length, cor: atrasados.length ? "text-red-700" : "" },
     { rotulo: "Para hoje", valor: deHoje.length, cor: "" },
     { rotulo: "Prazos a confirmar", valor: aConfirmar, cor: aConfirmar ? "text-amber-700" : "" },
+    { rotulo: "Publicações a tratar", valor: publicacoes, cor: publicacoes ? "text-amber-700" : "", href: "/publicacoes" },
     { rotulo: "Meus processos ativos", valor: processosAtivos, cor: "" },
   ];
 
   return (
     <div className="max-w-5xl space-y-6">
       <h1 className="text-2xl font-semibold">Olá, {usuario.nome.split(" ")[0]}</h1>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {numeros.map((n) => (
-          <div key={n.rotulo} className="cartao">
+          <Link key={n.rotulo} href={"href" in n ? n.href! : "/agenda"} className="cartao hover:border-marca-600">
             <p className="text-sm text-slate-500">{n.rotulo}</p>
             <p className={`text-3xl font-semibold ${n.cor}`}>{n.valor}</p>
-          </div>
+          </Link>
         ))}
       </div>
       {atrasados.length > 0 && (

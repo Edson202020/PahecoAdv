@@ -34,6 +34,15 @@ npm run dev                     # http://localhost:3000
 O `seed` cria o primeiro usuário sócio e os feriados nacionais fixos do ano atual e do próximo.
 Carnaval, Corpus Christi, feriados municipais e suspensões de cada tribunal devem ser cadastrados na tela Feriados.
 
+## Publicações e andamentos automáticos
+
+- Tela **Publicações**: caixa de entrada (pendentes, tratadas, descartadas), vínculo ao processo pelo número CNJ,
+  distribuição ao responsável e botão "Criar prazo", que abre o cálculo já com a data de disponibilização.
+- **DataJud (CNJ)**: `npm run sincronizar:datajud` busca novos movimentos de todos os processos ativos com número CNJ
+  e grava como andamentos. Exige `DATAJUD_API_KEY`. Na hospedagem, um agendador chama `POST /api/cron/datajud`
+  com o cabeçalho `Authorization: Bearer <CRON_SECRET>`.
+- **AASP**: a integração depende da documentação técnica da API de intimações, que a AASP fornece ao associado.
+
 ## Importar o backup do Astrea
 
 Descompacte o arquivo `BACKUP_TOTAL_....zip` exportado do Astrea numa pasta **fora do repositório**

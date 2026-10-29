@@ -17,16 +17,20 @@ export function FormCompromisso({
   processoInicial,
   responsavelInicial,
   podeConfirmar,
+  publicacaoId,
+  disponibilizacaoInicial = "",
 }: {
   processos: { id: string; titulo: string; numeroCnj: string | null }[];
   responsaveis: Opcao[];
   processoInicial: string;
   responsavelInicial: string;
   podeConfirmar: boolean;
+  publicacaoId?: string;
+  disponibilizacaoInicial?: string;
 }) {
   const [tipo, setTipo] = useState("PRAZO");
   const [processoId, setProcessoId] = useState(processoInicial);
-  const [disponibilizacao, setDisponibilizacao] = useState("");
+  const [disponibilizacao, setDisponibilizacao] = useState(disponibilizacaoInicial);
   const [dias, setDias] = useState(15);
   const [contagem, setContagem] = useState<"DIAS_UTEIS" | "DIAS_CORRIDOS">("DIAS_UTEIS");
   const [simulacao, setSimulacao] = useState<Simulacao>(null);
@@ -45,6 +49,7 @@ export function FormCompromisso({
 
   return (
     <Formulario acao={criarCompromisso} className="cartao space-y-4">
+      {publicacaoId && <input type="hidden" name="publicacaoId" value={publicacaoId} />}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="rotulo" htmlFor="tipo">Tipo</label>

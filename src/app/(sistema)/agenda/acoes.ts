@@ -41,7 +41,9 @@ export async function criarCompromisso(_: EstadoForm, dados: FormData): Promise<
   const processoId = (dados.get("processoId") as string) || null;
   const responsavelId = String(dados.get("responsavelId") ?? "");
   if (!responsavelId) return { erro: "Escolha o responsável." };
+  const publicacaoId = (dados.get("publicacaoId") as string) || null;
   const comum = {
+    publicacaoId,
     tipo,
     titulo,
     descricao: String(dados.get("descricao") ?? "").trim() || null,
@@ -79,6 +81,8 @@ export async function criarCompromisso(_: EstadoForm, dados: FormData): Promise<
     ({ id } = await db.compromisso.create({ data: { ...comum, inicio, confirmado: true } }));
   }
   await registrar(usuario.id, "criar", "Compromisso", id);
+  // O prazo criado a partir de uma publicação a encerra na caixa de entrada.
+  if (publicacaoId) await db.publicacao.update({ where: { id: publicacaoId }, data: { tratada: true } });
   redirect(processoId ? `/processos/${processoId}` : "/agenda");
 }
 

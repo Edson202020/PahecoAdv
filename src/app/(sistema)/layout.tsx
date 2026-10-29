@@ -7,6 +7,7 @@ export default async function LayoutSistema({ children }: { children: React.Reac
   const itens = [
     { href: "/", rotulo: "Painel" },
     { href: "/agenda", rotulo: "Agenda e prazos" },
+    { href: "/publicacoes", rotulo: "Publicações" },
     { href: "/processos", rotulo: "Processos" },
     { href: "/clientes", rotulo: "Clientes" },
     ...(pode(usuario.perfil, "usuarios:gerenciar")

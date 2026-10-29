@@ -11,7 +11,8 @@
     "seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
-    "importar:astrea": "tsx scripts/importar-astrea.ts"
+    "importar:astrea": "tsx scripts/importar-astrea.ts",
+    "sincronizar:datajud": "tsx scripts/sincronizar-datajud.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
