@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de gestão · Pachecos Advogados Associados
 
-## Getting Started
+Sistema interno do escritório para processos, prazos, clientes, publicações, financeiro e documentos.
+A especificação completa está no documento "Especificação do Sistema de Gestão Jurídica".
 
-First, run the development server:
+## O que já funciona
+
+- Login com perfis (sócio, advogado, estagiário, secretaria) e registro de auditoria
+- Clientes (validação de CPF e CNPJ)
+- Processos e casos consultivos (validação do número CNJ), clientes vinculados e andamentos
+- Agenda: prazos, audiências, reuniões e tarefas, com atrasados, hoje e próximos
+- Cálculo de prazos em dias úteis ou corridos, com feriados cadastrados e recesso de 20/12 a 20/01;
+  todo prazo fica "aguardando confirmação" até um advogado conferir
+- Painel inicial por usuário
+- Cadastro de usuários e de feriados (somente sócio)
+- Instalável no celular (manifesto web)
+
+O banco já tem as tabelas de publicações, atendimentos, financeiro e documentos; as telas chegam nas próximas etapas.
+
+## Tecnologia
+
+Next.js 15 (React 19), TypeScript, Tailwind CSS, PostgreSQL com Prisma, NextAuth.
+
+## Como rodar localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env            # ajuste DATABASE_URL e gere NEXTAUTH_SECRET
+npm install
+npx prisma migrate deploy
+ADMIN_NOME="Seu nome" ADMIN_EMAIL="voce@escritorio.com.br" ADMIN_SENHA="uma-senha-forte" npm run seed
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O `seed` cria o primeiro usuário sócio e os feriados nacionais fixos do ano atual e do próximo.
+Carnaval, Corpus Christi, feriados municipais e suspensões de cada tribunal devem ser cadastrados na tela Feriados.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test
+```
