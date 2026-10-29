@@ -13,6 +13,8 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Em @layer components para que utilitários como w-auto possam sobrescrever. */
+@layer components {
 .campo {
   @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-marca-600 focus:outline-none focus:ring-2 focus:ring-marca-100;
 }
@@ -39,4 +41,5 @@ body {
 }
 .link {
   @apply text-marca-600 hover:underline;
+}
 }

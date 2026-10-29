@@ -87,10 +87,21 @@ enum StatusLancamento {
 }
 
 enum TipoHonorario {
-  FIXO
-  EXITO
-  MENSAL
-  MISTO
+  VALOR
+  PERCENTUAL
+}
+
+enum StatusHonorario {
+  LANCADO
+  FATURADO
+  PARCIAL
+  RECEBIDO
+}
+
+enum StatusFatura {
+  ABERTA
+  PAGA
+  CANCELADA
 }
 
 model Usuario {
@@ -141,8 +152,8 @@ model Cliente {
 
   processos    ProcessoCliente[]
   atendimentos Atendimento[]
-  contratos    ContratoHonorario[]
   lancamentos  Lancamento[]
+  faturas      Fatura[]
   documentos   Documento[]
 
   @@index([nome])
@@ -179,7 +190,7 @@ model Processo {
   andamentos   Andamento[]
   compromissos Compromisso[]
   publicacoes  Publicacao[]
-  contratos    ContratoHonorario[]
+  honorarios   Honorario[]
   lancamentos  Lancamento[]
   documentos   Documento[]
 
@@ -289,41 +300,99 @@ model Atendimento {
   criadoEm    DateTime @default(now())
 }
 
-model ContratoHonorario {
-  id          String        @id @default(cuid())
-  clienteId   String
-  cliente     Cliente       @relation(fields: [clienteId], references: [id])
-  processoId  String?
-  processo    Processo?     @relation(fields: [processoId], references: [id], onDelete: SetNull)
-  tipo        TipoHonorario
-  valorFixo   Decimal?      @db.Decimal(14, 2)
-  percentualExito Decimal?  @db.Decimal(5, 2)
-  descricao   String?
-  inicio      DateTime
-  criadoEm    DateTime      @default(now())
+model ContaBancaria {
+  id           String   @id @default(cuid())
+  nome         String
+  tipo         String?
+  agencia      String?
+  conta        String?
+  saldoInicial Decimal  @default(0) @db.Decimal(14, 2)
+  inicio       DateTime @db.Date
+  ativa        Boolean  @default(true)
+  codigoAstrea String?  @unique
+
+  lancamentos Lancamento[]
+  faturas     Fatura[]
+}
+
+model CategoriaFinanceira {
+  id           String  @id @default(cuid())
+  nome         String
+  paiId        String?
+  pai          CategoriaFinanceira?  @relation("Subcategorias", fields: [paiId], references: [id], onDelete: SetNull)
+  filhas       CategoriaFinanceira[] @relation("Subcategorias")
+  ativa        Boolean @default(true)
+  codigoAstrea String? @unique
 
   lancamentos Lancamento[]
 }
 
+// Movimento de caixa (a receber, a pagar, recebido, pago).
 model Lancamento {
   id          String           @id @default(cuid())
   tipo        TipoLancamento
+  subtipo     String?          // Honorário, Despesa, Avulsa, Valor inicial
   descricao   String
   valor       Decimal          @db.Decimal(14, 2)
-  vencimento  DateTime
-  pagamento   DateTime?
+  vencimento  DateTime         @db.Date
+  pagamento   DateTime?        @db.Date
   status      StatusLancamento @default(ABERTO)
-  categoria   String?
   reembolsavel Boolean         @default(false)
+  statusReembolso String?      // despesa do cliente: lançada, faturada, recebida
+  centroCusto String?
+  contaId     String?
+  conta       ContaBancaria?   @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  categoriaId String?
+  categoria   CategoriaFinanceira? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   clienteId   String?
   cliente     Cliente?         @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   processoId  String?
   processo    Processo?        @relation(fields: [processoId], references: [id], onDelete: SetNull)
-  contratoId  String?
-  contrato    ContratoHonorario? @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  faturaId    String?
+  fatura      Fatura?          @relation(fields: [faturaId], references: [id], onDelete: SetNull)
+  codigoAstrea String?         @unique
   criadoEm    DateTime         @default(now())
 
+  honorarios Honorario[]
+
   @@index([status, vencimento])
+}
+
+// Honorário contratado (parcela fixa ou percentual), ligado ao processo e ao lançamento que o recebe.
+model Honorario {
+  id           String          @id @default(cuid())
+  descricao    String
+  tipo         TipoHonorario
+  valor        Decimal?        @db.Decimal(14, 2)
+  percentual   Decimal?        @db.Decimal(5, 2)
+  vencimento   DateTime?       @db.Date
+  status       StatusHonorario @default(LANCADO)
+  processoId   String?
+  processo     Processo?       @relation(fields: [processoId], references: [id], onDelete: SetNull)
+  lancamentoId String?
+  lancamento   Lancamento?     @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+  codigoAstrea String?         @unique
+  criadoEm     DateTime        @default(now())
+}
+
+model Fatura {
+  id           String       @id @default(cuid())
+  numero       String
+  clienteId    String?
+  cliente      Cliente?     @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  status       StatusFatura @default(ABERTA)
+  emissao      DateTime     @db.Date
+  vencimento   DateTime     @db.Date
+  pagamento    DateTime?    @db.Date
+  valor        Decimal      @db.Decimal(14, 2)
+  valorDespesas Decimal     @default(0) @db.Decimal(14, 2)
+  contaId      String?
+  conta        ContaBancaria? @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  observacoes  String?
+  codigoAstrea String?      @unique
+  criadoEm     DateTime     @default(now())
+
+  lancamentos Lancamento[]
 }
 
 model Documento {

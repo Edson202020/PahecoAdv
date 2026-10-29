@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { usuarioAtual } from "@/lib/auth";
 import { pode, podeEditarProcesso } from "@/lib/permissoes";
 import { listarAdvogados, listarClientesResumo } from "@/lib/consultas";
-import { AREAS, STATUS_PROCESSO, TIPOS_CASO, TIPOS_COMPROMISSO } from "@/lib/rotulos";
+import { AREAS, STATUS_HONORARIO, STATUS_PROCESSO, TIPOS_CASO, TIPOS_COMPROMISSO } from "@/lib/rotulos";
 import { formatarData, formatarMoeda, formatarQuando, paraCampoData } from "@/lib/formatos";
 import { Formulario } from "@/components/Formulario";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
@@ -26,6 +26,14 @@ export default async function DetalheProcesso({ params }: { params: Promise<{ id
   });
   if (!processo) notFound();
   const podeEditar = podeEditarProcesso(usuario.perfil, usuario.id, processo.responsavelId);
+  const verFinanceiro = pode(usuario.perfil, "financeiro:ver");
+  const [honorarios, lancamentos] = verFinanceiro
+    ? await Promise.all([
+        // Honorários já lançados aparecem na tabela de lançamentos; aqui só os demais (ex.: percentuais de êxito).
+        db.honorario.findMany({ where: { processoId: id, lancamentoId: null }, orderBy: { vencimento: "desc" } }),
+        db.lancamento.findMany({ where: { processoId: id, status: { not: "CANCELADO" } }, orderBy: { vencimento: "desc" }, take: 50 }),
+      ])
+    : [[], []];
   const [advogados, clientes] = podeEditar ? await Promise.all([listarAdvogados(), listarClientesResumo()]) : [[], []];
 
   return (
@@ -79,7 +87,7 @@ export default async function DetalheProcesso({ params }: { params: Promise<{ id
           )}
           {podeEditar && (
             <Formulario limparAoSalvar acao={vincularCliente.bind(null, processo.id)} className="flex flex-wrap gap-2">
-              <select name="clienteId" className="campo w-auto flex-1" defaultValue="">
+              <select name="clienteId" className="campo min-w-0 flex-1 basis-48" defaultValue="">
                 <option value="">Vincular cliente...</option>
                 {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
@@ -107,6 +115,38 @@ export default async function DetalheProcesso({ params }: { params: Promise<{ id
           {processo.compromissos.length === 0 && <li className="text-slate-500">Nada pendente.</li>}
         </ul>
       </section>
+
+      {verFinanceiro && (honorarios.length > 0 || lancamentos.length > 0) && (
+        <section className="cartao space-y-3 text-sm">
+          <h2 className="font-semibold">Honorários e financeiro</h2>
+          {honorarios.length > 0 && (
+            <ul className="space-y-1">
+              {honorarios.map((h) => (
+                <li key={h.id}>
+                  {h.vencimento && <span className="font-medium">{formatarData(h.vencimento)} · </span>}
+                  {h.descricao} · {h.tipo === "PERCENTUAL" ? `${h.percentual}%` : formatarMoeda(h.valor)}
+                  <span className="text-slate-500"> · {STATUS_HONORARIO[h.status]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {lancamentos.length > 0 && (
+            <table className="tabela">
+              <thead><tr><th>Vencimento</th><th>Lançamento</th><th className="text-right">Valor</th><th>Situação</th></tr></thead>
+              <tbody>
+                {lancamentos.map((l) => (
+                  <tr key={l.id}>
+                    <td>{formatarData(l.vencimento)}</td>
+                    <td>{l.descricao}<span className="block text-xs text-slate-500">{l.subtipo}{l.reembolsavel ? " · reembolsável" : ""}</span></td>
+                    <td className={`text-right ${l.tipo === "DESPESA" ? "text-red-700" : "text-green-700"}`}>{l.tipo === "DESPESA" ? "- " : ""}{formatarMoeda(l.valor)}</td>
+                    <td>{l.status === "PAGO" ? `pago ${formatarData(l.pagamento)}` : "em aberto"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
 
       <section className="cartao space-y-3">
         <h2 className="font-semibold">

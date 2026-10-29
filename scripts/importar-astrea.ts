@@ -2,14 +2,21 @@
 // Uso: npm run importar:astrea -- /caminho/da/pasta
 //
 // Pode ser executado de novo: registros já importados (pelo código do Astrea) são ignorados.
-// Financeiro, documentos e timesheets ficam para a etapa 4.
+// Documentos e timesheets ainda não são importados.
 import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { parse } from "csv-parse";
 import { parse as parseSync } from "csv-parse/sync";
 import bcrypt from "bcryptjs";
-import { Prisma, PrismaClient, type Perfil, type StatusCompromisso, type TipoCaso } from "@prisma/client";
+import {
+  Prisma,
+  PrismaClient,
+  type Perfil,
+  type StatusCompromisso,
+  type StatusHonorario,
+  type TipoCaso,
+} from "@prisma/client";
 import {
   areaProvavel,
   dataAstrea,
@@ -381,6 +388,151 @@ async function importarPublicacoes(processos: Map<string, string>) {
   resumo["Publicações sem data (não importadas)"] = semData;
 }
 
+// ---------------------------------------------------------------- financeiro
+const valor = (v: string | undefined) => {
+  const n = Number((v ?? "").replace(",", "."));
+  return Number.isFinite(n) && (v ?? "").trim() !== "" ? n : null;
+};
+
+async function importarFinanceiro(
+  contatos: Map<string, string>,
+  processos: Map<string, string>,
+  linhasProcessos: Linha[],
+) {
+  const idsPorCodigo = async (modelo: "contaBancaria" | "categoriaFinanceira" | "fatura" | "lancamento") =>
+    new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((await (db[modelo] as any).findMany({ where: { codigoAstrea: { not: null } }, select: { id: true, codigoAstrea: true } })) as {
+        id: string;
+        codigoAstrea: string;
+      }[]).map((r) => [r.codigoAstrea, r.id]),
+    );
+
+  await db.contaBancaria.createMany({
+    data: ler("Contas.csv").map((c) => ({
+      codigoAstrea: c["Código"],
+      nome: c["Nome"].trim(),
+      tipo: texto(c["Tipo"]),
+      agencia: texto(c["Agência"]),
+      conta: texto(c["Conta"]),
+      saldoInicial: valor(c["Valor inicial"]) ?? 0,
+      inicio: dataAstrea(c["Data de início"]) ?? new Date(),
+      ativa: c["Status"] === "Ativo",
+    })),
+    skipDuplicates: true,
+  });
+  const contas = await idsPorCodigo("contaBancaria");
+
+  const linhasCategorias = ler("Categorias.csv");
+  await db.categoriaFinanceira.createMany({
+    data: linhasCategorias.map((c) => ({ codigoAstrea: c["Código"], nome: c["Nome"].trim(), ativa: c["Status"] !== "Inativo" })),
+    skipDuplicates: true,
+  });
+  const categorias = await idsPorCodigo("categoriaFinanceira");
+  for (const c of linhasCategorias.filter((c) => c["Pai"] && categorias.has(c["Pai"]))) {
+    await db.categoriaFinanceira.update({ where: { codigoAstrea: c["Código"] }, data: { paiId: categorias.get(c["Pai"]) } });
+  }
+  const centros = mapa("Centros de custo.csv");
+
+  const linhasFaturas = ler("Faturas.csv");
+  await db.fatura.createMany({
+    data: linhasFaturas.map((f) => {
+      const total = valor(f["Valor"]) ?? 0;
+      return {
+        codigoAstrea: f["Código"],
+        numero: f["Número da fatura"].trim(),
+        clienteId: contatos.get(f["Cliente"]) ?? null,
+        status: f["Status"] === "Recebido" ? ("PAGA" as const) : ("ABERTA" as const),
+        emissao: dataAstrea(f["Data de criação"]) ?? dataAstrea(f["Data de vencimento"])!,
+        vencimento: dataAstrea(f["Data de vencimento"])!,
+        pagamento: f["Status"] === "Recebido" ? dataAstrea(f["Data de pagamento"]) : null,
+        valor: total,
+        valorDespesas: Math.max(total - (valor(f["Valor sem despesas"]) ?? total), 0),
+        contaId: contas.get(f["Conta"]) ?? null,
+        observacoes: texto(f["Observações"]),
+      };
+    }),
+    skipDuplicates: true,
+  });
+  const faturas = await idsPorCodigo("fatura");
+
+  // A linha do tipo "Fatura" repete a soma das linhas que a compõem; fica só na tabela de faturas.
+  const linhasEntradas = ler("Entradas.csv").filter((e) => e["Tipo"] !== "Fatura");
+  const reembolso = new Map(ler("Despesas.csv").map((d) => [d["Entrada"], d["Status"]]));
+  await emLotes(linhasEntradas, 500, (lote) =>
+    db.lancamento.createMany({
+      data: lote.map((e) => {
+        const saida = e["Tipo"] === "Saída";
+        const pago = e["Status"] === "Feito";
+        return {
+          codigoAstrea: e["Código"],
+          tipo: saida ? ("DESPESA" as const) : ("RECEITA" as const),
+          subtipo: texto(e["Sub-Tipo"]),
+          descricao: e["Descrições"].trim() || e["Sub-Tipo"] || "Lançamento",
+          valor: Math.abs(valor(e["Valores"]) ?? 0),
+          vencimento: dataAstrea(e["Data de vencimento"]) ?? dataAstrea(e["Data de lançamento"])!,
+          pagamento: pago ? (dataAstrea(e["Data de pagamento"]) ?? dataAstrea(e["Dia pago"])) : null,
+          status: pago ? ("PAGO" as const) : ("ABERTO" as const),
+          reembolsavel: saida && e["Sub-Tipo"] === "Despesa",
+          statusReembolso: reembolso.get(e["Código"]) ?? null,
+          centroCusto: centros.get(lista(e["Centros de custo"])[0] ?? "") ?? null,
+          contaId: contas.get(e["Conta"]) ?? null,
+          categoriaId: categorias.get(lista(e["Categorias"])[0] ?? "") ?? null,
+          clienteId: contatos.get(e["Cliente"]) ?? contatos.get(e["Pago para"]) ?? null,
+          processoId: processos.get(e["Processo"]) ?? null,
+          faturaId: faturas.get(e["Fatura"]) ?? null,
+        };
+      }),
+      skipDuplicates: true,
+    }),
+  );
+  const lancamentos = await idsPorCodigo("lancamento");
+  const processoDoLancamento = new Map(
+    (await db.lancamento.findMany({ where: { processoId: { not: null } }, select: { id: true, processoId: true } })).map(
+      (l) => [l.id, l.processoId!],
+    ),
+  );
+
+  // Honorários citam o processo pelo título; só usamos o título quando ele é único.
+  const porTitulo = new Map<string, string | null>();
+  for (const p of linhasProcessos) {
+    const t = p["Titulo"].trim();
+    porTitulo.set(t, porTitulo.has(t) ? null : (processos.get(p["Código"]) ?? null));
+  }
+  const STATUS_HONORARIO: Record<string, StatusHonorario> = {
+    Recebido: "RECEBIDO",
+    Lançado: "LANCADO",
+    Faturado: "FATURADO",
+    "Parcialmente recebido": "PARCIAL",
+  };
+  let semProcesso = 0;
+  const honorarios = ler("Honorários.csv").map((h) => {
+    const lancamentoId = lancamentos.get(h["Entrada"]) ?? null;
+    const processoId =
+      (lancamentoId && processoDoLancamento.get(lancamentoId)) || porTitulo.get(h["Processo"].trim()) || null;
+    if (!processoId) semProcesso++;
+    return {
+      codigoAstrea: h["Código"],
+      descricao: h["Descrição"].trim() || "Honorários",
+      tipo: h["Tipo"] === "Percentual" ? ("PERCENTUAL" as const) : ("VALOR" as const),
+      valor: valor(h["Valor"]),
+      percentual: valor(h["Porcentagem"]),
+      vencimento: dataAstrea(h["Data de vencimento"]),
+      status: STATUS_HONORARIO[h["Status"]] ?? "LANCADO",
+      processoId,
+      lancamentoId,
+    };
+  });
+  await db.honorario.createMany({ data: honorarios, skipDuplicates: true });
+
+  resumo["Contas bancárias"] = contas.size;
+  resumo["Categorias financeiras"] = categorias.size;
+  resumo["Faturas"] = faturas.size;
+  resumo["Lançamentos (sem repetir o total das faturas)"] = lancamentos.size;
+  resumo["Honorários"] = honorarios.length;
+  resumo["Honorários sem processo identificado"] = semProcesso;
+}
+
 async function main() {
   console.log(`Importando backup do Astrea de ${pasta}`);
   const usuarios = await importarUsuarios();
@@ -391,6 +543,7 @@ async function main() {
   const processos = await importarProcessos(linhasProcessos, usuarios, contatos, padrao);
   await importarAgenda(usuarios, processos, padrao);
   await importarPublicacoes(processos);
+  await importarFinanceiro(contatos, processos, linhasProcessos);
   await importarHistoricos(processos);
   console.log("\nResumo da importação:");
   for (const [k, v] of Object.entries(resumo)) console.log(`  ${k}: ${v}`);
