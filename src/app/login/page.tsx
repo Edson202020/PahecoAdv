@@ -30,8 +30,10 @@ function FormLogin() {
   return (
     <form onSubmit={entrar} className="cartao w-full max-w-sm space-y-4 p-6">
       <div>
-        <h1 className="text-xl font-semibold text-marca-900">Pachecos Advogados</h1>
-        <p className="text-sm text-slate-500">Acesse o sistema de gestão</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Pachecos Advogados" width={590} height={271} className="mx-auto mb-2 w-56" />
+        <h1 className="sr-only">Pachecos Advogados</h1>
+        <p className="text-center text-sm text-slate-500">Acesse o sistema de gestão</p>
       </div>
       <MensagemErro mensagem={erro} />
       <div>

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export const viewport: Viewport = { themeColor: "#1f4e8c" };
+export const viewport: Viewport = { themeColor: "#2e2a25" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

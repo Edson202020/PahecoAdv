@@ -18,7 +18,11 @@ export function Menu({ itens, nome, perfil }: { itens: Item[]; nome: string; per
   return (
     <>
       <header className="flex items-center justify-between bg-marca-900 px-4 py-3 text-white md:hidden">
-        <span className="font-semibold">Pachecos Advogados</span>
+        <span className="flex items-center gap-2 font-semibold">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="" width={28} height={28} className="rounded" />
+          Pachecos Advogados
+        </span>
         <button onClick={() => setAberto(!aberto)} aria-label="Abrir menu" className="text-2xl leading-none">
           ☰
         </button>
@@ -26,9 +30,13 @@ export function Menu({ itens, nome, perfil }: { itens: Item[]; nome: string; per
       <nav
         className={`${aberto ? "block" : "hidden"} w-full shrink-0 bg-marca-900 text-white md:sticky md:top-0 md:block md:h-screen md:w-60`}
       >
-        <div className="hidden px-5 py-6 md:block">
-          <p className="text-lg font-semibold">Pachecos Advogados</p>
-          <p className="text-xs text-marca-100">Gestão do escritório</p>
+        <div className="hidden items-center gap-3 px-5 py-6 md:flex">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="" width={40} height={40} className="rounded-md" />
+          <div>
+            <p className="text-lg font-semibold leading-tight">Pachecos Advogados</p>
+            <p className="text-xs text-marca-100">Gestão do escritório</p>
+          </div>
         </div>
         <ul className="space-y-1 px-3 pb-3">
           {itens.map((item) => (
