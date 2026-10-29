@@ -13,7 +13,7 @@
     "postinstall": "prisma generate",
     "importar:astrea": "tsx scripts/importar-astrea.ts",
     "sincronizar:datajud": "tsx scripts/sincronizar-datajud.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
+    "vercel-build": "tsx scripts/verificar-ambiente.ts && prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
     "sincronizar:aasp": "tsx scripts/sincronizar-aasp.ts"
   },
   "dependencies": {
