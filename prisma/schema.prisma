@@ -186,6 +186,7 @@ model Processo {
   responsavelId  String
   responsavel    Usuario        @relation("Responsavel", fields: [responsavelId], references: [id])
   criadoEm       DateTime       @default(now())
+  sincronizadoEm DateTime?
   atualizadoEm   DateTime       @updatedAt
 
   clientes     ProcessoCliente[]

@@ -44,7 +44,7 @@ Carnaval, Corpus Christi, feriados municipais e suspensões de cada tribunal dev
 - **DataJud (CNJ)**: `npm run sincronizar:datajud` busca novos movimentos de todos os processos ativos com número CNJ
   e grava como andamentos. Exige `DATAJUD_API_KEY`. Na hospedagem, um agendador chama `POST /api/cron/datajud`
   com o cabeçalho `Authorization: Bearer <CRON_SECRET>`.
-- **AASP**: intimações do dia buscadas pela API de Intimações (`/api/cron/aasp`, dias úteis às 7h e 13h de Brasília) ou com `npm run sincronizar:aasp -- AAAA-MM-DD`. Defina `AASP_API_KEY`. Os nomes dos campos de cada intimação ainda devem ser conferidos com a documentação técnica da AASP.
+- **AASP**: intimações do dia buscadas pela API de Intimações (`/api/cron/aasp`, dias úteis às 8h de Brasília) ou com `npm run sincronizar:aasp -- AAAA-MM-DD`. Defina `AASP_API_KEY`. Os nomes dos campos de cada intimação ainda devem ser conferidos com a documentação técnica da AASP.
 
 ## Importar o backup do Astrea
 

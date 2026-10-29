@@ -71,22 +71,36 @@ export async function sincronizarProcesso(
 
 const TRIBUNAIS_SUPORTADOS = /^(TJ[A-Z]{2}|TRT\d{1,2}|TRF\d|TST|STJ)$/;
 
-export async function sincronizarTodos(chave: string, aoProgredir?: (feitos: number, total: number) => void) {
+/**
+ * Sincroniza os processos ativos, começando pelos consultados há mais tempo.
+ * Com `limiteMs`, para antes do prazo e continua de onde parou na próxima execução.
+ */
+export async function sincronizarTodos(
+  chave: string,
+  aoProgredir?: (feitos: number, total: number) => void,
+  limiteMs?: number,
+) {
+  const inicio = Date.now();
   const processos = await db.processo.findMany({
     where: { status: "ATIVO", numeroCnj: { not: null }, tribunal: { not: null } },
     select: { id: true, numeroCnj: true, tribunal: true },
+    orderBy: { sincronizadoEm: { sort: "asc", nulls: "first" } },
   });
   const alvo = processos.filter((p) => TRIBUNAIS_SUPORTADOS.test(p.tribunal!));
   let novos = 0;
   const falhas: string[] = [];
+  let consultados = 0;
   for (const [i, p] of alvo.entries()) {
+    if (limiteMs && Date.now() - inicio > limiteMs) break;
     try {
       novos += await sincronizarProcesso({ id: p.id, numeroCnj: p.numeroCnj!, tribunal: p.tribunal! }, chave);
+      await db.processo.update({ where: { id: p.id }, data: { sincronizadoEm: new Date() } });
     } catch (e) {
       falhas.push(`${p.numeroCnj}: ${(e as Error).message}`);
     }
+    consultados++;
     aoProgredir?.(i + 1, alvo.length);
     await new Promise((r) => setTimeout(r, 250)); // não sobrecarregar a API do CNJ
   }
-  return { processos: alvo.length, novos, falhas };
+  return { processos: alvo.length, consultados, novos, falhas };
 }
