@@ -3,7 +3,7 @@ import { exigir } from "@/lib/auth";
 import { NOMES_PERFIL } from "@/lib/permissoes";
 import { Formulario } from "@/components/Formulario";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
-import { alternarAtivo, criarUsuario, redefinirSenha } from "./acoes";
+import { alterarPerfil, alternarAtivo, criarUsuario, redefinirSenha } from "./acoes";
 
 export default async function PaginaUsuarios() {
   const admin = await exigir("usuarios:gerenciar");
@@ -20,7 +20,16 @@ export default async function PaginaUsuarios() {
               <tr key={u.id}>
                 <td>{u.nome}{u.oab && <span className="block text-xs text-slate-500">OAB {u.oab}</span>}</td>
                 <td>{u.email}</td>
-                <td>{NOMES_PERFIL[u.perfil]}</td>
+                <td>
+                  {u.id === admin.id ? NOMES_PERFIL[u.perfil] : (
+                    <form action={alterarPerfil.bind(null, u.id)} className="flex gap-1">
+                      <select name="perfil" defaultValue={u.perfil} className="campo w-auto py-1">
+                        {Object.entries(NOMES_PERFIL).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+                      </select>
+                      <button className="botao-secundario px-2 py-1 text-xs">Salvar</button>
+                    </form>
+                  )}
+                </td>
                 <td>
                   {u.id === admin.id ? "Ativo" : (
                     <form action={alternarAtivo.bind(null, u.id)}>

@@ -34,6 +34,20 @@ npm run dev                     # http://localhost:3000
 O `seed` cria o primeiro usuário sócio e os feriados nacionais fixos do ano atual e do próximo.
 Carnaval, Corpus Christi, feriados municipais e suspensões de cada tribunal devem ser cadastrados na tela Feriados.
 
+## Importar o backup do Astrea
+
+Descompacte o arquivo `BACKUP_TOTAL_....zip` exportado do Astrea numa pasta **fora do repositório**
+(os dados dos clientes nunca devem ir para o Git) e rode:
+
+```bash
+npm run importar:astrea -- /caminho/da/pasta
+```
+
+Importa usuários, contatos (clientes e demais partes), processos e casos, prazos, audiências, eventos,
+tarefas, publicações e históricos. Pode ser executado de novo sem duplicar nada.
+Usuários importados recebem senha aleatória: o sócio define a senha de cada um na tela Usuários.
+Financeiro, documentos e timesheets serão importados na etapa 4.
+
 ## Testes
 
 ```bash

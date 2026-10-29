@@ -64,6 +64,15 @@ enum OrigemPublicacao {
   DJEN
   DATAJUD
   MANUAL
+  IMPORTACAO
+}
+
+enum TipoCaso {
+  PROCESSO
+  CASO
+  ATENDIMENTO
+  INCIDENTE
+  RECURSO
 }
 
 enum TipoLancamento {
@@ -92,6 +101,7 @@ model Usuario {
   perfil       Perfil
   oab          String?
   ativo        Boolean  @default(true)
+  codigoAstrea String?  @unique
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -102,16 +112,30 @@ model Usuario {
   auditoria     RegistroAuditoria[]
 }
 
+// Clientes e demais contatos (partes contrárias, testemunhas...): ehCliente distingue.
 model Cliente {
   id           String     @id @default(cuid())
   tipo         TipoPessoa
+  ehCliente    Boolean    @default(true)
   nome         String
+  apelido      String?
   cpfCnpj      String?    @unique
   rg           String?
   email        String?
   telefone     String?
   endereco     String?
+  cidade       String?
+  uf           String?
+  cep          String?
+  dataNascimento DateTime? @db.Date
+  estadoCivil  String?
+  nacionalidade String?
+  profissao    String?
+  nomeMae      String?
+  nomePai      String?
+  dadosExtras  Json?      // CTPS, PIS, CNH, título de eleitor etc.
   observacoes  String?
+  codigoAstrea String?    @unique
   criadoEm     DateTime   @default(now())
   atualizadoEm DateTime   @updatedAt
 
@@ -127,7 +151,9 @@ model Cliente {
 model Processo {
   id             String         @id @default(cuid())
   numeroCnj      String?        @unique
+  numeroAlternativo String?     // números fora do padrão CNJ (administrativos, antigos)
   titulo         String
+  tipo           TipoCaso       @default(PROCESSO)
   area           AreaDireito
   status         StatusProcesso @default(ATIVO)
   tribunal       String?
@@ -137,7 +163,13 @@ model Processo {
   valorCausa     Decimal?       @db.Decimal(14, 2)
   dataDistribuicao DateTime?
   consultivo     Boolean        @default(false)
+  instancia      Int?
+  tipoAcao       String?
+  pasta          String?
+  url            String?
+  dataEncerramento DateTime?
   observacoes    String?
+  codigoAstrea   String?        @unique
   responsavelId  String
   responsavel    Usuario        @relation("Responsavel", fields: [responsavelId], references: [id])
   criadoEm       DateTime       @default(now())
@@ -158,6 +190,8 @@ model ProcessoCliente {
   processoId String
   clienteId  String
   polo       String? // autor, réu, reclamante, reclamada, interessado
+  ehCliente  Boolean  @default(true)
+  principal  Boolean  @default(false)
   processo   Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
   cliente    Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
@@ -171,7 +205,8 @@ model Andamento {
   data       DateTime
   descricao  String
   origem     OrigemPublicacao @default(MANUAL)
-  codigoExterno String? // código do movimento no DataJud, para evitar duplicidade
+  tipo       String?
+  codigoExterno String? // código do movimento no DataJud ou no Astrea, para evitar duplicidade
   criadoEm   DateTime @default(now())
 
   @@unique([processoId, origem, codigoExterno, data])
@@ -192,6 +227,9 @@ model Compromisso {
   confirmado    Boolean           @default(false)
   status        StatusCompromisso @default(PENDENTE)
   local         String?
+  prioridade    String?
+  concluidoEm   DateTime?
+  codigoAstrea  String?           @unique
   processoId    String?
   processo      Processo?         @relation(fields: [processoId], references: [id], onDelete: SetNull)
   responsavelId String
@@ -221,9 +259,12 @@ model Publicacao {
   dataDisponibilizacao DateTime
   dataPublicacao   DateTime?
   diario           String?
+  orgao            String?
+  vara             String?
   numeroProcesso   String?
   texto            String
   tratada          Boolean          @default(false)
+  descartada       Boolean          @default(false)
   processoId       String?
   processo         Processo?        @relation(fields: [processoId], references: [id], onDelete: SetNull)
   responsavelId    String?

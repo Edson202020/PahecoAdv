@@ -21,6 +21,8 @@ export default async function PaginaProcessos({
       OR: [
         { titulo: { contains: busca, mode: "insensitive" } },
         { numeroCnj: { contains: busca } },
+        { numeroAlternativo: { contains: busca } },
+        { pasta: { contains: busca, mode: "insensitive" } },
         { parteContraria: { contains: busca, mode: "insensitive" } },
         { clientes: { some: { cliente: { nome: { contains: busca, mode: "insensitive" } } } } },
       ],
@@ -30,7 +32,10 @@ export default async function PaginaProcessos({
     where: filtro,
     orderBy: { atualizadoEm: "desc" },
     take: 200,
-    include: { responsavel: { select: { nome: true } }, clientes: { include: { cliente: { select: { nome: true } } } } },
+    include: {
+      responsavel: { select: { nome: true } },
+      clientes: { where: { ehCliente: true }, include: { cliente: { select: { nome: true } } } },
+    },
   });
 
   return (
@@ -63,7 +68,7 @@ export default async function PaginaProcessos({
             {processos.map((p) => (
               <tr key={p.id}>
                 <td><Link href={`/processos/${p.id}`} className="link">{p.titulo}</Link></td>
-                <td className="whitespace-nowrap">{p.numeroCnj ?? <span className="text-slate-500">consultivo</span>}</td>
+                <td className="whitespace-nowrap">{p.numeroCnj ?? p.numeroAlternativo ?? <span className="text-slate-500">{p.tipo === "ATENDIMENTO" ? "atendimento" : "consultivo"}</span>}</td>
                 <td className="hidden md:table-cell">{p.clientes.map((c) => c.cliente.nome).join(", ")}</td>
                 <td className="hidden md:table-cell">{AREAS[p.area]}</td>
                 <td>{p.responsavel.nome}</td>

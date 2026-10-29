@@ -1,4 +1,4 @@
-import type { AreaDireito, StatusProcesso, TipoCompromisso } from "@prisma/client";
+import type { AreaDireito, StatusProcesso, TipoCaso, TipoCompromisso } from "@prisma/client";
 
 export const AREAS: Record<AreaDireito, string> = {
   TRABALHISTA: "Trabalhista",
@@ -24,4 +24,12 @@ export const TIPOS_COMPROMISSO: Record<TipoCompromisso, string> = {
   AUDIENCIA: "Audiência",
   REUNIAO: "Reunião",
   TAREFA: "Tarefa",
+};
+
+export const TIPOS_CASO: Record<TipoCaso, string> = {
+  PROCESSO: "Processo",
+  CASO: "Caso",
+  ATENDIMENTO: "Atendimento",
+  INCIDENTE: "Incidente",
+  RECURSO: "Recurso",
 };

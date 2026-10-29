@@ -40,6 +40,16 @@ export async function alternarAtivo(id: string) {
   revalidatePath("/usuarios");
 }
 
+export async function alterarPerfil(id: string, dados: FormData) {
+  const admin = await exigir("usuarios:gerenciar");
+  const perfil = dados.get("perfil") as Perfil;
+  if (!Object.values(Perfil).includes(perfil)) throw new Error("Perfil inválido.");
+  if (id === admin.id && perfil !== "SOCIO") throw new Error("Você não pode retirar o próprio perfil de sócio.");
+  await db.usuario.update({ where: { id }, data: { perfil } });
+  await registrar(admin.id, "alterar_perfil", "Usuario", id, { perfil });
+  revalidatePath("/usuarios");
+}
+
 export async function redefinirSenha(id: string, _: EstadoForm, dados: FormData): Promise<EstadoForm> {
   const admin = await exigir("usuarios:gerenciar");
   const senha = String(dados.get("senha") ?? "");
